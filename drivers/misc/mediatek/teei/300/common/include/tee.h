@@ -1,19 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2015-2016, Linaro Limited
  * All rights reserved.
  * Copyright (c) 2015-2019, MICROTRUST Incorporated
  * All rights reserved.
- * Copyright (c) 2017-2018, GNU General Public License
- * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
  */
 
 #ifndef __TEE_H
@@ -464,5 +455,11 @@ struct tee_ioctl_capi_proxy_arg {
  *	   tee_ioctl_shm_alloc_data
  * munmap(): unmaps previously shared memory
  */
+
+#define TEE_IOC_SHM_RELEASE _IOR(TEE_IOC_MAGIC, TEE_IOC_BASE + 12, \
+					struct tee_ioctl_shm_alloc_data)
+
+#define TEE_IOC_SHM_ID _IOR(TEE_IOC_MAGIC, TEE_IOC_BASE + 13, \
+					struct tee_ioctl_shm_alloc_data)
 
 #endif /*__TEE_H*/

@@ -1,23 +1,16 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2015-2019, MICROTRUST Incorporated
  * Copyright (C) 2021 XiaoMi, Inc.
  * All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
  */
 
 #ifndef TEEI_FUNC_H
 #define TEEI_FUNC_H
 
 #include <teei_ioc.h>
-#define MICROTRUST_FP_SIZE	0x200000
+#define MICROTRUST_FP_SIZE	0x100000
 #define FP_MAJOR		254
 #define DEV_NAME		"teei_fp"
 

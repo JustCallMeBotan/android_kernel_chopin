@@ -1,16 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2015-2019, MICROTRUST Incorporated
- * Copyright (C) 2021 XiaoMi, Inc.
  * All Rights Reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
  */
 
 #define IMSG_TAG "[tz_driver]"
@@ -28,7 +20,6 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
-#include <linux/init.h>
 
 #define TEEI_SWITCH_BIG_CORE
 
@@ -65,9 +56,9 @@
 #include <teei_keymaster.h>
 #include <irq_register.h>
 #include <../teei_fp/fp_func.h>
+#include "tz_log.h"
 
 #if (CONFIG_MICROTRUST_TZ_DRIVER_MTK_BOOTPROF && CONFIG_MTPROF)
-
 #if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
 #define TEEI_BOOT_FOOTPRINT(str) bootprof_log_boot(str)
 #else
@@ -94,8 +85,8 @@ DECLARE_COMPLETION(boot_decryto_lock);
 #define TZ_PREFER_BIND_CORE (7)
 #endif
 
-#define TEEI_RT_POLICY		(0x01)
-#define TEEI_NORMAL_POLICY	(0x02)
+#define TEEI_RT_POLICY			(0x01)
+#define TEEI_NORMAL_POLICY		(0x02)
 
 /* ARMv8.2 for CA55, CA75 etc */
 static int teei_cpu_id_arm82[] = {
@@ -216,21 +207,17 @@ static void *teei_cpu_write_owner;
 
 int teei_set_switch_pri(unsigned long policy)
 {
-	struct sched_param param = {.sched_priority = 50 };
 	int retVal = 0;
 
 	if (policy == TEEI_RT_POLICY) {
 		if (teei_switch_task != NULL) {
-			sched_setscheduler_nocheck(teei_switch_task,
-						SCHED_FIFO, &param);
+			set_user_nice(teei_switch_task, MIN_NICE);
 			return 0;
 		} else
 			return -EINVAL;
 	} else if (policy == TEEI_NORMAL_POLICY) {
 		if (teei_switch_task != NULL) {
-			param.sched_priority = 0;
-			sched_setscheduler_nocheck(teei_switch_task,
-						SCHED_NORMAL, &param);
+			set_user_nice(teei_switch_task, 0);
 			return 0;
 		} else
 			return -EINVAL;
@@ -429,7 +416,6 @@ static int nq_cpu_up_prep(unsigned int cpu)
 	return 0;
 #endif
 }
-
 
 static int nq_cpu_down_prep(unsigned int cpu)
 {
@@ -771,6 +757,7 @@ static long teei_config_ioctl(struct file *file,
 			teei_flags = 1;
 
 			TEEI_BOOT_FOOTPRINT("TEEI start to load driver TAs");
+
 			if (param.uuid_count > MAX_DRV_UUIDS) {
 				IMSG_ERROR("TEEI uuid_count is invalid(%u)!\n",
 					(unsigned int)(param.uuid_count));
@@ -1068,26 +1055,6 @@ static struct platform_driver teei_driver = {
 	},
 };
 
-int is_teei_boot(void)
-{
-	char mode = 0;
-	char *ptr = strstr(saved_command_line, "androidboot.tee_type=");
-	if(ptr) {
-		mode = *(ptr + strlen("androidboot.tee_type="));
-		if (mode == '2') {
-			pr_info("is_teei_boot: yes\n");
-			return 1;
-		}
-		else {
-			pr_info("is_teei_boot: no!\n");
-			return 0;
-		}
-	} else {
-		pr_info("is_teei_boot: can not find androidboot.tee_type, default yes\n");
-		return 1;
-	}
-}
-
 /**
  * @brief TEEI Agent Driver initialization
  * initialize service framework
@@ -1097,9 +1064,6 @@ static int teei_client_init(void)
 {
 	int ret_code = 0;
 	struct device *class_dev = NULL;
-
-	if (is_teei_boot() == 0)
-		return 0;
 
 	struct sched_param param = {.sched_priority = 50 };
 
@@ -1249,7 +1213,6 @@ static int teei_client_init(void)
 	wake_up_process(teei_log_task);
 
 	IMSG_DEBUG("create the sub_thread successfully!\n");
-
 
 	teei_config_init();
 

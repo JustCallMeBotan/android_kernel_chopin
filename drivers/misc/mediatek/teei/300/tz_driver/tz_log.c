@@ -1,15 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2015-2019, MICROTRUST Incorporated
  * Copyright (C) 2015 Google, Inc.
- *
- * This software is licensed under the terms of the GNU General Public
- * License version 2, as published by the Free Software Foundation, and
- * may be copied, distributed, and modified under those terms.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
  *
  */
 
@@ -21,15 +13,24 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/log2.h>
+#include <linux/delay.h>
+#include <linux/cpu.h>
 #include <asm/page.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
 
 #include <teei_client_main.h>
+#ifdef CONFIG_MTK_TEE_SANITY
 #include <tee_sanity.h>
+#endif
 #include "tz_log.h"
-
+#include "nt_smc_call.h"
+#include "notify_queue.h"
+#include "switch_queue.h"
+#include "utdriver_macro.h"
 #include "log_perf.h"
+
+#define TEE_LOG_TYPE	0x10
 
 struct tz_log_state *g_tz_log_state;
 static struct completion teei_log_comp;
@@ -43,7 +44,8 @@ int init_tlog_comp_fn(void)
 
 void teei_notify_log_fn(void)
 {
-	complete(&teei_log_comp);
+	if (!completion_done(&teei_log_comp))
+		complete(&teei_log_comp);
 }
 
 static int __tz_driver_read_logs(struct tz_log_state *s, char *buffer,
@@ -172,12 +174,7 @@ static void tz_driver_dump_logs(struct tz_log_state *s)
 		 * if log level >= KERN_INFO)
 		 */
 
-		if (likely(is_teei_ready())) {
-			if (mtk_tee_log_tracing(get_current_cpuid(), 0,
-						s->line_buffer, read_chars))
-				IMSG_PRINTK("[TZ_LOG] %s", s->line_buffer);
-		} else
-			IMSG_PRINTK("[TZ_LOG] %s", s->line_buffer);
+		IMSG_PRINTK("[TZ_LOG] %s", s->line_buffer);
 
 		/*
 		 * Dump early log to boot log buffer
@@ -215,14 +212,18 @@ int teei_log_fn(void *work)
 #endif
 
 	while (1) {
-		retVal = wait_for_completion_interruptible(&teei_log_comp);
-		if (retVal != 0)
-			continue;
+		if (switch_input_index == switch_output_index) {
+			retVal = wait_for_completion_interruptible(
+							&teei_log_comp);
+			if (retVal != 0)
+				continue;
+		}
+
 #ifdef CONFIG_MICROTRUST_TZ_LOG
-		spin_lock_irqsave(&s->lock, flags);
+		msleep(20);
 		tz_driver_dump_logs(s);
-		spin_unlock_irqrestore(&s->lock, flags);
 #endif
+
 	}
 
 	return NOTIFY_OK;
@@ -352,6 +353,49 @@ static int tz_log_debugfs_init(void)
 
 
 #endif
+
+int teei_change_log_status(unsigned long new_status)
+{
+	struct completion *wait_completion = NULL;
+	int retVal = 0;
+
+	teei_cpus_read_lock();
+
+	wait_completion = kmalloc(sizeof(struct completion), GFP_KERNEL);
+	if (wait_completion == NULL) {
+		IMSG_ERROR("TEEI: Failed to alloc completion[%s]\n", __func__);
+		teei_cpus_read_unlock();
+		return -ENOMEM;
+	}
+
+	init_completion(wait_completion);
+
+	retVal = add_work_entry(SMC_CALL_TYPE, N_INVOKE_T_NQ, 0, 0, 0);
+	if (retVal != 0) {
+		IMSG_ERROR("TEEI: Failed to add_work_entry[%s]\n", __func__);
+		kfree(wait_completion);
+		teei_cpus_read_unlock();
+		return retVal;
+	}
+
+	retVal = add_nq_entry(TEEI_MODIFY_TEE_CONFIG, TEE_LOG_TYPE,
+				(unsigned long long)(wait_completion),
+				new_status, 0, 0);
+	if (retVal != 0) {
+		IMSG_ERROR("TEEI: Failed to add one nq to n_t_buffer\n");
+		kfree(wait_completion);
+		teei_cpus_read_unlock();
+		return retVal;
+	}
+
+	teei_notify_switch_fn();
+
+	wait_for_completion(wait_completion);
+	kfree(wait_completion);
+	teei_cpus_read_unlock();
+
+	return 0;
+}
 
 int tz_log_probe(struct platform_device *pdev)
 {
