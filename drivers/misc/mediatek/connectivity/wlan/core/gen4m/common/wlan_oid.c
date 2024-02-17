@@ -2669,6 +2669,10 @@ wlanoidSetAddKey(IN struct ADAPTER *prAdapter, IN void *pvSetBuffer,
 				"[wlan] Not set the peer key while disconnect\n");
 			return WLAN_STATUS_SUCCESS;
 		}
+#if CFG_SUPPORT_FRAG_AGG_ATTACK_DETECTION
+		/* clear fragment cache when rekey */
+		nicRxClearFrag(prAdapter, prStaRec);
+#endif /* CFG_SUPPORT_FRAG_AGG_ATTACK_DETECTION */
 	}
 	cmd_size = prChipInfo->u2CmdTxHdrSize +	sizeof(struct CMD_802_11_KEY);
 	prCmdInfo = cmdBufAllocateCmdInfo(prAdapter, cmd_size);
@@ -11451,7 +11455,7 @@ wlanoidSetNvramWrite(IN struct ADAPTER *prAdapter,
 	rNvRwInfo = (struct PARAM_CUSTOM_EEPROM_RW_STRUCT *)
 			pvSetBuffer;
 
-	if (rNvRwInfo->ucMethod == PARAM_EEPROM_WRITE_NVRAM) {
+	if (rNvRwInfo->ucMethod == PARAM_EEPROM_WRITE_NVRAM)
 		fgStatus = kalCfgDataWrite8(prAdapter->prGlueInfo,
 			rNvRwInfo->info.rNvram.u2NvIndex,
 			rNvRwInfo->info.rNvram.u2NvData & 0x00FF);
@@ -11465,7 +11469,7 @@ wlanoidSetNvramWrite(IN struct ADAPTER *prAdapter,
 		if (fgStatus == TRUE)
 			wlanLoadManufactureData(prAdapter,
 				kalGetConfiguration(prAdapter->prGlueInfo));
-	}else
+	else
 		fgStatus = kalCfgDataWrite16(prAdapter->prGlueInfo,
 				     rNvRwInfo->info.rEeprom.ucEepromIndex <<
 				     1, /* change to byte offset */

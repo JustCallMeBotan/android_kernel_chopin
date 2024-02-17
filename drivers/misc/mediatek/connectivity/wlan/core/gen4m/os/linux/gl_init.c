@@ -1499,144 +1499,6 @@ void p2pSetMulticastListWorkQueueWrapper(struct GLUE_INFO
 
 } /* end of p2pSetMulticastListWorkQueueWrapper() */
 
-#if ARP_BRUST_OPTIMIZE
-static u_int8_t data_is_ipv4_arp_pkt(struct sk_buff *skb)
-{
-	uint8_t *pPkt;
-	uint16_t u2EtherType;
-
-	pPkt = skb->data;
-	u2EtherType = (pPkt[ETH_TYPE_LEN_OFFSET] << 8)
-			     |(pPkt[ETH_TYPE_LEN_OFFSET + 1]);
-	//DBGLOG(INIT, INFO, "u2EtherType=0x%x", u2EtherType);
-	if (u2EtherType == ETH_P_ARP)
-		return TRUE;
-	else
-		return FALSE;
-}
-static u_int8_t data_is_ipv4_arp_req(struct sk_buff *skb)
-{
-	uint8_t *pPkt;
-	uint16_t u2OpCode;
-
-	pPkt = skb->data;
-	u2OpCode = (pPkt[ETH_HLEN+6] << 8)| pPkt[ETH_HLEN+7];
-	//DBGLOG(INIT, INFO, "u2OPCode:0x%x\n", u2OpCode);
-	if (u2OpCode == ARP_PRO_REQ)
-		return TRUE;
-	else
-		return FALSE;
-}
-static uint32_t get_arp_tgt_ip(struct sk_buff *skb)
-{
-	uint8_t *pPkt;
-	uint32_t u4TgtIp;
-
-	pPkt = skb->data;
-	u4TgtIp = *(uint32_t *)(pPkt + ETH_HLEN + ARP_TARGET_IP_OFFSET);
-	return u4TgtIp;
-}
-static void arp_brust_opt_init(struct ADAPTER *adapter)
-{
-	struct arp_burst_stat *arp_b_s;
-
-	if (adapter == NULL) {
-		DBGLOG(INIT, WARN, "arp brust opt init fail\n");
-		return;
-	}
-	arp_b_s = &(adapter->arp_b_stat);
-	arp_b_s->begin = 0;
-	arp_b_s->brust = 10;
-	arp_b_s->brust_signify = 5;
-	arp_b_s->drop_count = 0;
-	arp_b_s->pass_count = 0;
-	arp_b_s->pass_signify_count = 0;
-	arp_b_s->interval = 100; //ms
-	arp_b_s->apIp = 0;
-	arp_b_s->gatewayIp = 0;
-}
-/* Xiaomi Add
- * RETURNS:
- * 0:Not limit
- *   packet isn't arp request or gateway and AP ip aren't 0
- * 1:limit based on brust count
- *   arp request and target ip is not gatway or AP IP
- * 2:limit based on gateway burst count
- *   arp request and target ip is gatway or AP IP
- */
-static int process_pkt_action(struct ADAPTER *adapter, struct sk_buff *skb)
-{
-	uint32_t u4TgtIp = 0;
-	struct arp_burst_stat *arp_b_s = &(adapter->arp_b_stat);
-
-	if (arp_b_s->apIp == 0 && arp_b_s->gatewayIp == 0)
-		return 0;
-	if (data_is_ipv4_arp_pkt(skb) && data_is_ipv4_arp_req(skb)) {
-		u4TgtIp = get_arp_tgt_ip(skb);
-
-		if (arp_b_s->apIp == u4TgtIp || arp_b_s->gatewayIp == u4TgtIp)
-			return 2;
-		return 1;
-	}
-	return 0;
-}
-/* Xiaomi Add
- * RETURNS:
- * 0 means drop arp request
- * 1 means go ahead
- */
-static int arp_rate_limit(struct ADAPTER *adapter, struct sk_buff *skb)
-{
-	struct arp_burst_stat *arp_b_s = NULL;
-	int ret;
-	int action;
-
-	if (adapter == NULL)
-		return 1;
-	arp_b_s = &(adapter->arp_b_stat);
-	action = process_pkt_action(adapter, skb);
-	if (!action)
-		return 1;
-	// init fail, so don't drop arp request
-	if (arp_b_s->interval == 0 || arp_b_s->brust == 0 || arp_b_s->brust_signify == 0) {
-		DBGLOG_LIMITED(INIT, TRACE, "init fail\n");
-		return 1;
-	}
-	if (arp_b_s->begin == 0)
-		arp_b_s->begin = kalGetTimeTick();
-	if (CHECK_FOR_TIMEOUT(kalGetTimeTick(), arp_b_s->begin, arp_b_s->interval)) {
-	//if (time_is_before_jiffies(arp_b_s->begin + arp_b_s->interval)) {
-		if (arp_b_s->drop_count) {
-			DBGLOG_LIMITED(INIT, WARN, "%s: arp too frequency, drop count: %d",
-				__func__, arp_b_s->drop_count);
-			arp_b_s->drop_count = 0;
-		}
-		arp_b_s->begin = kalGetTimeTick();
-		arp_b_s->pass_count = 0;
-		arp_b_s->pass_signify_count = 0;
-
-	}
-	if (action == 1) {
-		if (arp_b_s->pass_count > arp_b_s->brust) {
-			arp_b_s->drop_count++;
-			ret = 0;
-		} else {
-			arp_b_s->pass_count++;
-			ret = 1;
-		}
-	} else { //for action == 2
-		if (arp_b_s->pass_signify_count > arp_b_s->brust_signify) {
-			arp_b_s->drop_count++;
-			ret = 0;
-		} else {
-			arp_b_s->pass_signify_count++;
-			ret = 1;
-		}
-
-	}
-	return ret;
-}
-#endif
 /*----------------------------------------------------------------------------*/
 /*
  * \brief This function is TX entry point of NET DEVICE.
@@ -1696,13 +1558,6 @@ netdev_tx_t wlanHardStartXmit(struct sk_buff *prSkb,
 #if (CFG_SUPPORT_STATISTICS == 1)
 	STATS_TX_TIME_ARRIVE(prSkb);
 #endif
-#if ARP_BRUST_OPTIMIZE
-	if (!arp_rate_limit(prGlueInfo->prAdapter, prSkb)) {
-		dev_kfree_skb(prSkb);
-		return NETDEV_TX_OK;
-	}
-#endif
-
 	if (kalHardStartXmit(prSkb, prDev, prGlueInfo,
 			     ucBssIndex) == WLAN_STATUS_SUCCESS) {
 		/* Successfully enqueue to Tx queue */
@@ -5107,9 +4962,6 @@ static int32_t wlanProbe(void *pvData, void *pvDriverData)
 		       CFG_SUPPORT_PERSIST_NETDEV);
 #if CFG_MTK_MCIF_WIFI_SUPPORT
 		mddpNotifyWifiOnEnd();
-#endif
-#if ARP_BRUST_OPTIMIZE
-		arp_brust_opt_init(prAdapter);
 #endif
 	} else {
 		DBGLOG(INIT, ERROR, "wlanProbe: probe failed, reason:%d\n",

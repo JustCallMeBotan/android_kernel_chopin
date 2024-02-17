@@ -1346,19 +1346,7 @@ struct HIF_STATS {
 	uint32_t u4EventRxCount; /* event from DMA to hif_thread */
 	uint32_t u4DataRxCount; /* data from DMA to hif_thread */
 };
-#if ARP_BRUST_OPTIMIZE
-struct arp_burst_stat {
-	uint32_t brust;
-	uint32_t brust_signify;
-	uint32_t interval;
-	uint32_t pass_count;
-	uint32_t pass_signify_count;
-	uint32_t drop_count;
-	uint32_t begin;
-	uint32_t apIp;
-	uint32_t gatewayIp;
-};
-#endif
+
 /*
  * Major ADAPTER structure
  * Major data structure for driver operation
@@ -1791,9 +1779,6 @@ struct ADAPTER {
 	u_int8_t fgEnDbgPowerMode;
 
 	struct HIF_STATS rHifStats;
-#if ARP_BRUST_OPTIMIZE
-	struct arp_burst_stat arp_b_stat;
-#endif
 };				/* end of _ADAPTER_T */
 
 /*******************************************************************************

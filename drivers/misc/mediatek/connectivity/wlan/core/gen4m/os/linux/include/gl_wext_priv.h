@@ -182,10 +182,6 @@
 /* wifi type: 11g, 11n, ... */
 #define  PRIV_CMD_GET_WIFI_TYPE		41
 
-/* set ant swap control */
-#define PRIV_CMD_SET_ANT_SWAP_CTRL		50
-
-
 /* 802.3 Objects (Ethernet) */
 #define OID_802_3_CURRENT_ADDRESS           0x01010102
 

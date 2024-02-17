@@ -158,16 +158,6 @@ static int priv_driver_set_power_control(IN struct net_device *prNetDev,
 			      IN char *pcCommand,
 			      IN int i4TotalLen);
 #endif
-#if CFG_SUPPORT_ANT_SWAP
-/* set ant swap */
-static int priv_driver_set_ant_swap(IN struct net_device *prNetDev,
-				  IN char *pcCommand, IN int i4TotalLen);
-#endif
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-static int priv_driver_set_scan_ext_flag(IN struct net_device *prNetDev,
-				IN char *pcCommand, IN int i4TotalLen);
-#endif
-
 /*******************************************************************************
  *                       P R I V A T E   D A T A
  *******************************************************************************
@@ -1872,36 +1862,6 @@ __priv_set_struct(IN struct net_device *prNetDev,
 		}
 		break;
 
-        case PRIV_CMD_SET_ANT_SWAP_CTRL:
-		{
-			char *pCommand = NULL;
-
-			u4CmdLen = prIwReqData->data.length;
-			if (u4CmdLen >= CMD_OID_BUF_LENGTH)
-				return -EINVAL;
-			if (copy_from_user(&aucOidBuf[0],
-					   prIwReqData->data.pointer,
-					   u4CmdLen)) {
-				status = -EFAULT;
-				break;
-			}
-			aucOidBuf[u4CmdLen] = 0;
-			if (strlen(aucOidBuf) <= 0) {
-				status = -EFAULT;
-				break;
-			}
-			pCommand = kalMemAlloc(u4CmdLen + 1, VIR_MEM_TYPE);
-			if (pCommand == NULL) {
-				DBGLOG(REQ, INFO, "alloc fail\n");
-				return -EINVAL;
-			}
-			kalMemZero(pCommand, u4CmdLen + 1);
-			kalMemCopy(pCommand, aucOidBuf, u4CmdLen);
-			priv_driver_cmds(prNetDev, pCommand, u4CmdLen);
-			kalMemFree(pCommand, VIR_MEM_TYPE, i4TotalLen);
-		}
-		break;
-
 	default:
 		return -EOPNOTSUPP;
 	}
@@ -2974,7 +2934,6 @@ reqExtSetAcpiDevicePowerState(IN struct GLUE_INFO
 #define CMD_FW_EVENT		"FW-EVENT "
 #define CMD_GET_WIFI_TYPE	"GET_WIFI_TYPE"
 #define CMD_SET_PWR_CTRL        "SET_PWR_CTRL"
-#define CMD_SET_ANT_SWAP        "SET_ANT_SWAP"
 #define PRIV_CMD_SIZE 512
 #define CMD_SET_FIXED_RATE      "FixedRate"
 #define CMD_GET_VERSION         "VER"
@@ -2994,9 +2953,6 @@ reqExtSetAcpiDevicePowerState(IN struct GLUE_INFO
 #define CMD_GET_STA_IDX         "GET_STA_IDX"
 #define CMD_GET_TX_POWER_INFO   "TxPowerInfo"
 #define CMD_TX_POWER_MANUAL_SET "TxPwrManualSet"
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-#define CMD_SET_SCAN_EXT_FLAG   "SetScanExtFlag"
-#endif
 
 
 /* neptune doens't support "show" entry, use "driver" to handle
@@ -11232,7 +11188,7 @@ int priv_driver_set_dbdc(IN struct net_device *prNetDev, IN char *pcCommand,
 	for (ucBssIndex = 0; ucBssIndex < (prAdapter->ucHwBssIdNum + 1);
 	     ucBssIndex++) {
 		prBssInfo = prGlueInfo->prAdapter->aprBssInfo[ucBssIndex];
-		pr_debug("****BSS %u inUse %u active %u Mode %u priCh %u state %u rfBand %u\n",
+		pr_info("****BSS %u inUse %u active %u Mode %u priCh %u state %u rfBand %u\n",
 			ucBssIndex,
 			prBssInfo->fgIsInUse,
 			prBssInfo->fgIsNetActive,
@@ -13680,9 +13636,6 @@ struct PRIV_CMD_HANDLER priv_cmd_handlers[] = {
 #if CFG_SUPPORT_DYNAMIC_PWR_LIMIT
 	{CMD_SET_PWR_CTRL, priv_driver_set_power_control},
 #endif
-#if CFG_SUPPORT_ANT_SWAP
-	{CMD_SET_ANT_SWAP, priv_driver_set_ant_swap},
-#endif
 #if (CFG_SUPPORT_CONNINFRA == 1)
 	{CMD_SET_WHOLE_CHIP_RESET, priv_driver_trigger_whole_chip_reset},
 	{CMD_SET_WFSYS_RESET, priv_driver_trigger_wfsys_reset},
@@ -13697,9 +13650,6 @@ struct PRIV_CMD_HANDLER priv_cmd_handlers[] = {
 	{CMD_SET_STA1NSS, priv_driver_set_sta1ss},
 	{CMD_SET_NVRAM, priv_driver_set_nvram},
 	{CMD_GET_NVRAM, priv_driver_get_nvram},
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-	{CMD_SET_SCAN_EXT_FLAG, priv_driver_set_scan_ext_flag},
-#endif
 };
 
 int32_t priv_driver_cmds(IN struct net_device *prNetDev, IN int8_t *pcCommand,
@@ -13954,12 +13904,6 @@ int32_t priv_driver_cmds(IN struct net_device *prNetDev, IN int8_t *pcCommand,
 				    strlen(CMD_SET_PWR_CTRL)) == 0) {
 			priv_driver_set_power_control(prNetDev,
 						      pcCommand, i4TotalLen);
-#endif
-#if CFG_SUPPORT_ANT_SWAP
-                } else if (strnicmp(pcCommand, CMD_SET_ANT_SWAP,
-                            strlen(CMD_SET_ANT_SWAP)) == 0) {
-                    priv_driver_set_ant_swap(prNetDev,
-                                      pcCommand, i4TotalLen);
 #endif
 		} else if (strnicmp(pcCommand, CMD_SET_BF,
 			   strlen(CMD_SET_BF)) == 0) {
@@ -14293,69 +14237,5 @@ static int priv_driver_set_power_control(IN struct net_device *prNetDev,
 		 &u4SetInfoLen);
 
 	return 0;
-}
-#endif
-
-#if CFG_SUPPORT_ANT_SWAP
-/* set ant swap */
-static int priv_driver_set_ant_swap(IN struct net_device *prNetDev,
-				  IN char *pcCommand, IN int i4TotalLen)
-{
-       int ant_swap = 0;
-       char *chain0_main = "SET_CHIP AntSwapManualCtrl 2 0";
-       char *chain0_aux = "SET_CHIP AntSwapManualCtrl 2 1";
-
-       ant_swap = atoi(pcCommand[13]);
-       DBGLOG(REQ, INFO, "%s ant_swap = %d \n", __func__, ant_swap);
-
-       i4TotalLen = kalStrLen(chain0_main) + 1;
-       if (ant_swap == 0) {
-           priv_driver_set_chip_config(prNetDev, chain0_main, i4TotalLen);
-       } else if (ant_swap == 1) {
-           priv_driver_set_chip_config(prNetDev, chain0_aux, i4TotalLen);
-       } else {
-           DBGLOG(REQ, ERROR, "%s ant_swap err, value = %d \n", __func__, ant_swap);
-           return -1;
-       }
-
-	return 0;
-}
-#endif
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-/* Xiaom ADD
- * argv: 1 means that force scan on gaming mode
- */
-static int priv_driver_set_scan_ext_flag(IN struct net_device *prNetDev,
-				IN char *pcCommand, IN int i4TotalLen)
-{
-	struct GLUE_INFO *prGlueInfo = NULL;
-	int8_t *apcArgv[WLAN_CFG_ARGV_MAX] = { 0 };
-	int32_t i4Argc = 0;
-	int32_t u4Ret = 0;
-	uint32_t u4ScanExtFlag = 0;
-
-	ASSERT(prNetDev);
-	if (GLUE_CHK_PR2(prNetDev, pcCommand) == FALSE)
-		return -1;
-	prGlueInfo = *((struct GLUE_INFO **) netdev_priv(prNetDev));
-
-	DBGLOG(REQ, INFO, "command is %s\n", pcCommand);
-	wlanCfgParseArgument(pcCommand, &i4Argc, apcArgv);
-	DBGLOG(REQ, LOUD, "argc is %i\n", i4Argc);
-
-	if (i4Argc <= 1) {
-		DBGLOG(REQ, ERROR, "Argc(%d) ERR: Scan Ext Flag\n", i4Argc);
-		return -1;
-	}
-
-	u4Ret = kalkStrtou32(apcArgv[1], 0, &u4ScanExtFlag);
-	if (u4Ret)
-		DBGLOG(REQ, ERROR, "parse scan ext flag error u4Ret=%d\n", u4Ret);
-	if (prGlueInfo == NULL) {
-		DBGLOG(REQ, ERROR, "prGlueInfo is null\n");
-		return -1;
-	}
-	prGlueInfo->u4ScanExtFlag = u4ScanExtFlag;
-	return WLAN_STATUS_SUCCESS;
 }
 #endif

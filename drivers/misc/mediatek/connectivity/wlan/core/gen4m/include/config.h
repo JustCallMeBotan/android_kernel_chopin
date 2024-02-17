@@ -246,6 +246,9 @@
 /* Enable A-MSDU RX Reordering Support */
 #define CFG_SUPPORT_RX_AMSDU	1
 
+/* Enable Detection for 2021 Frag/AGG Attack from WFA */
+#define CFG_SUPPORT_FRAG_AGG_ATTACK_DETECTION 1
+
 /* Enable Android wake_lock operations */
 #ifndef CFG_ENABLE_WAKE_LOCK
 #define CFG_ENABLE_WAKE_LOCK	1
@@ -690,7 +693,7 @@
 
 /* Allow connection with no P2P IE device */
 #ifndef CFG_P2P_CONNECT_ALL_BSS
-#define CFG_P2P_CONNECT_ALL_BSS            0
+#define CFG_P2P_CONNECT_ALL_BSS            1
 #endif
 
 /* Allow setting max P2P GO client count */
@@ -970,8 +973,6 @@
 #define CFG_SUPPORT_PWR_LIMIT_COUNTRY		1
 
 #define CFG_SUPPORT_DYNAMIC_PWR_LIMIT		1
-
-#define CFG_SUPPORT_ANT_SWAP		1
 
 #define CFG_FIX_2_TX_PORT			0
 
@@ -1455,9 +1456,6 @@
 #define CFG_SUPPORT_PWR_LIMIT_HE		    0
 #endif
 
-//Xiaomi add
-#define ARP_BRUST_OPTIMIZE 1
-#define CFG_SUPPORT_SCAN_EXT_FLAG 1
 /*******************************************************************************
  *                             D A T A   T Y P E S
  *******************************************************************************

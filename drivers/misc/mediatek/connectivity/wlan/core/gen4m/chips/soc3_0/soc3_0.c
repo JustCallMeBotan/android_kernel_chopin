@@ -146,8 +146,8 @@ static uint8_t *soc3_0_apucCr4FwName[] = {
 ********************************************************************************
 */
 #if CFG_MTK_ANDROID_EMI
-	phys_addr_t ggConEmiPhyBase;
-	unsigned long long ggConEmiSize;
+	phys_addr_t gConEmiPhyBase;
+	unsigned long long gConEmiSize;
 
 #if (CFG_SUPPORT_PRE_ON_PHY_ACTION == 1)
 u_int8_t *gEmiCalResult;
@@ -2641,7 +2641,7 @@ void wlanCoAntVFE28Dis(void)
 
 void wlanCoAntWiFi(void)
 {
-	u_int32_t u4GPIO10 = 0x0;
+	u_int32 u4GPIO10 = 0x0;
 
 	wf_ioremap_read(0x100053a0, &u4GPIO10);
 	u4GPIO10 |= 0x20000;
@@ -2651,7 +2651,7 @@ void wlanCoAntWiFi(void)
 
 void wlanCoAntMD(void)
 {
-	u_int32_t u4GPIO10 = 0x0;
+	u_int32 u4GPIO10 = 0x0;
 
 	wf_ioremap_read(0x100053a0, &u4GPIO10);
 	u4GPIO10 |= 0x10000;
@@ -2909,7 +2909,7 @@ void soc3_0_icapDownVcoreClockRate(void)
 }
 
 #if (CFG_POWER_ON_DOWNLOAD_EMI_ROM_PATCH == 1)
-//#pragma message("SOC3_0::CFG_POWER_ON_DOWNLOAD_EMI_ROM_PATCH == 1")
+#pragma message("SOC3_0::CFG_POWER_ON_DOWNLOAD_EMI_ROM_PATCH == 1")
 void soc3_0_ConstructFirmwarePrio(struct GLUE_INFO *prGlueInfo,
 	uint8_t **apucNameTable, uint8_t **apucName,
 	uint8_t *pucNameIdx, uint8_t ucMaxNameIdx)
@@ -3386,7 +3386,7 @@ uint32_t soc3_0_wlanPowerOnDownload(
 			return WLAN_STATUS_SUCCESS;
 		}
 #else
-//#pragma message("ROM code supports no SEM-CTRL for ROM patch download")
+#pragma message("ROM code supports no SEM-CTRL for ROM patch download")
 #endif
 
 		/* Patch DL */
@@ -3960,21 +3960,21 @@ uint32_t soc3_0_wlanAccessCalibrationEMI(
 	uint8_t __iomem *pucEmiBaseAddr = NULL;
 
 	conninfra_get_phy_addr(
-		(unsigned int *)&ggConEmiPhyBase,
-		(unsigned int *)&ggConEmiSize);
+		(unsigned int *)&gConEmiPhyBase,
+		(unsigned int *)&gConEmiSize);
 
-	if (!ggConEmiPhyBase) {
+	if (!gConEmiPhyBase) {
 		DBGLOG(INIT, ERROR,
-		       "ggConEmiPhyBase invalid\n");
+		       "gConEmiPhyBase invalid\n");
 		return u4Status;
 	}
 
-	request_mem_region(ggConEmiPhyBase, ggConEmiSize, "WIFI-EMI");
-	kalSetEmiMpuProtection(ggConEmiPhyBase, false);
-	pucEmiBaseAddr = ioremap_nocache(ggConEmiPhyBase, ggConEmiSize);
+	request_mem_region(gConEmiPhyBase, gConEmiSize, "WIFI-EMI");
+	kalSetEmiMpuProtection(gConEmiPhyBase, false);
+	pucEmiBaseAddr = ioremap_nocache(gConEmiPhyBase, gConEmiSize);
 	DBGLOG(INIT, INFO,
-	       "backupEMI(%d),ggConEmiPhyBase(0x%x),ggConEmiSize(0x%X),pucEmiBaseAddr(0x%x)\n",
-	       backupEMI, ggConEmiPhyBase, ggConEmiSize, pucEmiBaseAddr);
+	       "backupEMI(%d),gConEmiPhyBase(0x%x),gConEmiSize(0x%X),pucEmiBaseAddr(0x%x)\n",
+	       backupEMI, gConEmiPhyBase, gConEmiSize, pucEmiBaseAddr);
 
 	do {
 		if (!pucEmiBaseAddr) {
@@ -4034,9 +4034,9 @@ uint32_t soc3_0_wlanAccessCalibrationEMI(
 		u4Status = WLAN_STATUS_SUCCESS;
 	} while (FALSE);
 
-	kalSetEmiMpuProtection(ggConEmiPhyBase, true);
+	kalSetEmiMpuProtection(gConEmiPhyBase, true);
 	iounmap(pucEmiBaseAddr);
-	release_mem_region(ggConEmiPhyBase, ggConEmiSize);
+	release_mem_region(gConEmiPhyBase, gConEmiSize);
 #endif /* CFG_MTK_ANDROID_EMI */
 	return u4Status;
 }

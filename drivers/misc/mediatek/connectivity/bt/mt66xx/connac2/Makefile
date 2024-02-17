@@ -5,14 +5,14 @@ MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
 ###############################################################################
 # Necessary Check
 
-ifneq ($(KERNEL_OUT),)
-    ccflags-y += -imacros $(KERNEL_OUT)/include/generated/autoconf.h
+ifeq ($(AUTOCONF_H),)
+    $(error AUTOCONF_H is not defined)
 endif
 
-#$(warning connac20 bt driver: _MTK_BT_CHIP = 6893)
-CONNAC20_CHIPID=$(subst MTK_CONSYS_MT,,6893)
-ccflags-y += -D CONNAC20_CHIPID=6893
-#$(warning connac20 bt driver: CONNAC20_CHIPID = 6893)
+$(warning connac20 bt driver: _MTK_BT_CHIP = $(_MTK_BT_CHIP))
+CONNAC20_CHIPID=$(subst MTK_CONSYS_MT,,$(_MTK_BT_CHIP))
+ccflags-y += -D CONNAC20_CHIPID=$(CONNAC20_CHIPID)
+$(warning connac20 bt driver: CONNAC20_CHIPID = $(CONNAC20_CHIPID))
 
 # only for sw-ready-go
 ifeq ($(_MTK_BT_CHIP), MTK_CONSYS_MT6893)
@@ -29,7 +29,7 @@ endif
 USE_DEVICE_NODE := y
 #CUSTOMER_FW_UPDATE := y
 
-ccflags-y += -DCHIP_IF_BTIF
+ccflags-y += -imacros $(AUTOCONF_H) -DCHIP_IF_BTIF
 
 # Customized feature, load 1b fw bin
 #ccflags-y += -D BT_CUS_FEATURE
@@ -49,18 +49,18 @@ else
 ccflags-y += -D CUSTOMER_FW_UPDATE=0
 endif
 
-#$(warning set PM_QOS_CONTROL=1)
-ccflags-y += -D PM_QOS_CONTROL=1
-
-ccflags-y += -Wno-error
-ccflags-y += -Wno-unused-variable
-
+ifneq ($(CFG_BT_PM_QOS_CONTROL),)
+    $(warning set PM_QOS_CONTROL=1)
+    ccflags-y += -D PM_QOS_CONTROL=1
+else
+    ccflags-y += -D PM_QOS_CONTROL=0
+endif
 
 # ---------------------------------------------------
 # Include Path
 # ---------------------------------------------------
-CONN_INFRA_SRC := $(srctree)/drivers/misc/mediatek/connectivity/conninfra
-WMT_SRC := $(srctree)/drivers/misc/mediatek/connectivity/common
+CONN_INFRA_SRC := $(TOP)/vendor/mediatek/kernel_modules/connectivity/conninfra
+WMT_SRC := $(TOP)/vendor/mediatek/kernel_modules/connectivity/common
 BTIF_SRC := $(srctree)/drivers/misc/mediatek/btif
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/connectivity/common
 ccflags-y += -I$(CONN_INFRA_SRC)/include
@@ -84,7 +84,7 @@ endif
 # Objects List
 # ---------------------------------------------------
 MODULE_NAME := bt_drv
-obj-y += $(MODULE_NAME).o
+obj-m += $(MODULE_NAME).o
 
 #PLAT_DIR  := plat/$(MTK_PLATFORM)
 

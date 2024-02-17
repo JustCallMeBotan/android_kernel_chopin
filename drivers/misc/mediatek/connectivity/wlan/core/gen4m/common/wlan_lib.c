@@ -487,6 +487,9 @@ struct PARAM_CUSTOM_KEY_CFG_STRUCT g_rDefaulteSetting[] = {
 	*	"Operation:default 0"
 	*   }
 	*/
+	/* enable WIFI FW coex feature */
+	{"CoexFddSupport", "0x1"},
+	{"CoexTddCotxSupport", "0x1"},
 	{"AdapScan", "0x0", WLAN_CFG_DEFAULT},
 #if CFG_SUPPORT_IOT_AP_BLACKLIST
 	/*Fill Iot AP blacklist here*/
@@ -11842,7 +11845,8 @@ int wlanGetMaxTxRate(IN struct ADAPTER *prAdapter,
 {
 	struct BSS_INFO *prBssInfo;
 	uint8_t ucPhyType, ucTxMode = 0, ucMcsIdx = 0, ucSgi = 0;
-	uint8_t ucBw = 0, ucAPBwPermitted = 0, ucNss = 0, ucApNss = 0;
+	uint8_t ucBw = 0, ucAPBwPermitted = 0, ucApNss = 0;
+	uint8_t ucOpTxNss = 0, ucOpRxNss = 0;
 	uint8_t ucOffset = (MAX_BW_80MHZ - CW_80MHZ);
 	struct BSS_DESC *prBssDesc = NULL;
 
@@ -11939,24 +11943,25 @@ int wlanGetMaxTxRate(IN struct ADAPTER *prAdapter,
 	}
 
 	/* get antenna number */
-	ucNss = wlanGetSupportNss(prAdapter, prBssInfo->ucBssIndex);
+	cnmOpModeGetTRxNss(prAdapter, prBssInfo->ucBssIndex, &ucOpRxNss, &ucOpTxNss);
+
 	if (prBssDesc) {
 		ucApNss = bssGetRxNss(prAdapter, prBssDesc);
-		if (ucApNss > 0 && ucApNss < ucNss)
-			ucNss = ucApNss;
+		if (ucApNss > 0 && ucApNss < ucOpTxNss)
+			ucOpTxNss = ucApNss;
 	}
-	if ((ucNss < 1) && (ucNss > 3)) {
-		DBGLOG(RLM, ERROR, "error ucNss: %u\n", ucNss);
+	if ((ucOpTxNss < 1) && (ucOpTxNss > 3)) {
+		DBGLOG(RLM, ERROR, "error ucNss: %u\n", ucOpTxNss);
 		goto errhandle;
 	}
 
 	DBGLOG(SW4, TRACE,
-	       "txmode=[%u], mcs idx=[%u], bandwidth=[%u], sgi=[%u], nsts=[%u]\n",
-	       ucTxMode, ucMcsIdx, ucBw, ucSgi, ucNss
+	       "txmode=[%u], mcs idx=[%u], bandwidth=[%u], sgi=[%u], nss=[%u]\n",
+	       ucTxMode, ucMcsIdx, ucBw, ucSgi, ucOpTxNss
 	);
 
 	if (wlanQueryRateByTable(ucTxMode, ucMcsIdx, ucBw, ucSgi,
-				ucNss, pu4CurRate, pu4MaxRate) < 0)
+				ucOpTxNss, pu4CurRate, pu4MaxRate) < 0)
 		goto errhandle;
 
 	DBGLOG(SW4, TRACE,
@@ -11968,7 +11973,7 @@ int wlanGetMaxTxRate(IN struct ADAPTER *prAdapter,
 errhandle:
 	DBGLOG(SW4, ERROR,
 	       "txmode=[%u], mcs idx=[%u], bandwidth=[%u], sgi=[%u], nsts=[%u]\n",
-	       ucTxMode, ucMcsIdx, ucBw, ucSgi, ucNss);
+	       ucTxMode, ucMcsIdx, ucBw, ucSgi, ucOpTxNss);
 	return -1;
 }
 #endif /* CFG_REPORT_MAX_TX_RATE */

@@ -1019,9 +1019,6 @@ int mtk_cfg80211_scan(struct wiphy *wiphy,
 
 #if CFG_SUPPORT_LOWLATENCY_MODE
 	if (!prGlueInfo->prAdapter->fgEnCfg80211Scan
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-		&& (prGlueInfo->u4ScanExtFlag != TRUE)
-#endif
 	    && MEDIA_STATE_CONNECTED
 	    == kalGetMediaStateIndicated(prGlueInfo, ucBssIndex)) {
 		DBGLOG(REQ, INFO,
@@ -1029,9 +1026,7 @@ int mtk_cfg80211_scan(struct wiphy *wiphy,
 		return -EBUSY;
 	}
 #endif /* CFG_SUPPORT_LOWLATENCY_MODE */
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-	prGlueInfo->u4ScanExtFlag = 0;
-#endif
+
 #if CFG_SUPPORT_SCAN_CACHE_RESULT
 	prGlueInfo->scanCache.prGlueInfo = prGlueInfo;
 	prGlueInfo->scanCache.prRequest = request;

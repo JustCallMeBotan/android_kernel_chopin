@@ -816,9 +816,6 @@ struct GLUE_INFO {
 #if (CONFIG_WLAN_SERVICE == 1)
 	struct service rService;
 #endif
-#if CFG_SUPPORT_SCAN_EXT_FLAG
-	uint32_t u4ScanExtFlag;
-#endif
 };
 
 typedef irqreturn_t(*PFN_WLANISR) (int irq, void *dev_id,

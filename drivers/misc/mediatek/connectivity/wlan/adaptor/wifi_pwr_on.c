@@ -39,27 +39,27 @@ uint32_t DbgLevel = WIFI_FW_LOG_INFO;
 #define WIFI_DBG_FUNC(fmt, arg...)	\
 	do { \
 		if (DbgLevel >= WIFI_FW_LOG_DBG) \
-			pr_debug(PFX "%s[D]: " fmt, __func__, ##arg); \
+			pr_info(PFX "%s[D]: " fmt, __func__, ##arg); \
 	} while (0)
 #define WIFI_INFO_FUNC(fmt, arg...)	\
 	do { \
 		if (DbgLevel >= WIFI_FW_LOG_INFO) \
-			pr_debug(PFX "%s[I]: " fmt, __func__, ##arg); \
+			pr_info(PFX "%s[I]: " fmt, __func__, ##arg); \
 	} while (0)
 #define WIFI_INFO_FUNC_LIMITED(fmt, arg...)	\
 	do { \
 		if (DbgLevel >= WIFI_FW_LOG_INFO) \
-			pr_debug_ratelimited(PFX "%s[L]: " fmt, __func__, ##arg); \
+			pr_info_ratelimited(PFX "%s[L]: " fmt, __func__, ##arg); \
 	} while (0)
 #define WIFI_WARN_FUNC(fmt, arg...)	\
 	do { \
 		if (DbgLevel >= WIFI_FW_LOG_WARN) \
-			pr_warn(PFX "%s[W]: " fmt, __func__, ##arg); \
+			pr_info(PFX "%s[W]: " fmt, __func__, ##arg); \
 	} while (0)
 #define WIFI_ERR_FUNC(fmt, arg...)	\
 	do { \
 		if (DbgLevel >= WIFI_FW_LOG_ERR) \
-			pr_err(PFX "%s[E]: " fmt, __func__, ##arg); \
+			pr_info(PFX "%s[E]: " fmt, __func__, ##arg); \
 	} while (0)
 
 
@@ -73,7 +73,7 @@ int g_data;
 
 wait_queue_head_t g_waitq_onoff;
 unsigned long g_ulOnoffFlag;
-struct completion gg_RstOffComp;;
+struct completion g_RstOffComp;
 bool g_fgIsWiFiOn;
 struct task_struct *wland_thread;
 
